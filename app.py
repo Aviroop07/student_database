@@ -9,10 +9,10 @@ import pandas as pd
 def create_connection():
     try:
         connection = mysql.connector.connect(
-            host = st.secrets['mysql']['host'],
-            database = st.secrets['mysql']['database'],
-            user = st.secrets['mysql']['user'],
-            password = st.secrets['mysql']['password']
+            host = "localhost",
+            database = "streamlit_db",
+            user = "aviroop",
+            password = "ilove2#DOmaths"
         )
 
         if connection.is_connected():
