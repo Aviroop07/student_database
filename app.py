@@ -2,6 +2,7 @@ import streamlit as st
 import mysql.connector 
 from mysql.connector import DatabaseError, IntegrityError, InternalError, Error
 import pandas as pd
+from datetime import datetime
 
 
 
@@ -9,10 +10,10 @@ import pandas as pd
 def create_connection():
     try:
         connection = mysql.connector.connect(
-            host = "localhost",
-            database = "streamlit_db",
-            user = "aviroop",
-            password = "ilove2#DOmaths"
+            host = st.secrets['mysql']['host'],
+            database = st.secrets['mysql']['database'],
+            user = st.secrets['mysql']['user'],
+            password = st.secrets['mysql']['password']
         )
 
         if connection.is_connected():
@@ -38,8 +39,6 @@ def insert_data(connection, roll, name):
 
 
 def read_data(connection):
-    if st.session_state.edited == False and st.session_state.current_data is not None:
-        return st.session_state.current_data
     try:
         cursor = connection.cursor()
         cursor.execute('select * from student')
@@ -76,18 +75,18 @@ def edit_data(connection, roll, name):
 
 # components from here ---> 
 
-if 'edited' not in st.session_state:
-    st.session_state.edited = True
-
-if 'current_data' not in st.session_state:
-    st.session_state.current_data = None
-
-
 st.title("Student Database App")
+last_update = datetime.utcnow()
 connection = create_connection()
 if connection:
     st.session_state.current_data = read_data(connection)
     st.session_state.edited = False
+
+
+if 'current_data' not in st.session_state or 'last_update' not in st.session_state:
+    last_update = datetime.utcnow()
+    st.session_state.last_update = last_update
+    st.session_state.current_data = read_data(connection)
 
 
 roll = st.number_input('Roll',placeholder='Enter your roll here',min_value=100,step=1,max_value=1000)
@@ -112,8 +111,8 @@ if insert_button:
     else:
         try:
             insert_data(connection, roll, name)
-            st.session_state.edited = True
             insert_status.success('Data inserted successfully')
+            last_update = datetime.utcnow()
         except IntegrityError as e:
             insert_status.error('Duplicate entry')
         except Error as e:
@@ -121,9 +120,10 @@ if insert_button:
 
 
 if read_button:
-    st.session_state.current_data = read_data(connection)
+    if st.session_state.last_update != last_update:
+        st.session_state.current_data = read_data(connection)
+        st.session_state.last_update = last_update
     if st.session_state.current_data is not None:
-        st.session_state.edited = False
         read_status.success('Fetched data successfully')
         show_tables.dataframe(st.session_state.current_data)
     else:
@@ -133,19 +133,23 @@ if read_button:
 if delete_button:
     try:
         delete_data(connection, delete_roll)
-        st.session_state.edited = True
+        last_update = datetime.utcnow()
         delete_status.success('Entry deleted successfully')
     except IntegrityError as e:
         delete_status.error(e)
     except Error as e:
         delete_status.error('Error while deleting entry')
 
+
 if edit_button:
-    try:
-        edit_data(connection, edit_roll, edit_name)
-        st.session_state.edited = True
-        edit_status.success('Entry edited successfully')
-    except IntegrityError as e:
-        edit_status.error(e)
-    except Error as e:
-        edit_status.error('Error while editing entry')
+    if edit_name == "":
+        edit_status.error('Name cannot be empty')
+    else:
+        try:
+            edit_data(connection, edit_roll, edit_name)
+            last_update = datetime.utcnow()
+            edit_status.success('Entry edited successfully')
+        except IntegrityError as e:
+            edit_status.error(e)
+        except Error as e:
+            edit_status.error('Error while editing entry')
