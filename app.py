@@ -6,7 +6,7 @@ from datetime import datetime
 
 
 
-@st.cache_resource
+@st.cache_resource(ttl=900)
 def create_connection():
     try:
         connection = mysql.connector.connect(
@@ -75,7 +75,9 @@ def edit_data(connection, roll, name):
 
 # components from here ---> 
 
-st.title("Student Database App")
+st.write('''
+# Student Database
+''')
 last_update = datetime.utcnow()
 connection = create_connection()
 if connection:
